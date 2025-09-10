@@ -2,7 +2,6 @@
 #![cfg_attr(not(feature = "backend-sql"), deny(unexpected_cfgs))]
 
 use std::{future::Future, path::Path, sync::Arc};
-
 use ::time::ext::NumericalDuration;
 use cookie::{Cookie, SameSite};
 use serde::{Deserialize, Serialize};
@@ -14,8 +13,9 @@ use warp::{
     hyper::Body,
     Filter, Rejection, Reply,
 };
-
 use log::{debug, error, info};
+
+use crate::echopod::Echopod;
 
 mod auth;
 use auth::{BasicAuth, SessionId};
@@ -75,7 +75,7 @@ async fn main() {
 }
 
 fn routes(
-    echopod: Arc<echopod>,
+    echopod: Arc<Echopod>,
     secure: bool,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone + Sync + Send {
     let hello = warp::path::end()
@@ -334,7 +334,7 @@ impl UsernameFormat {
 
 fn cookie_authorize(
     username_fmt: UsernameFormat,
-    echopod: Arc<echopod>,
+    echopod: Arc<Echopod>,
 ) -> impl Filter<Extract = (echopod::Result<echopodAuthed<true>>,), Error = warp::Rejection> + Clone
 {
     warp::path::param::<String>()
@@ -363,7 +363,7 @@ fn cookie_authorize(
 
 fn login_authorize(
     username_fmt: UsernameFormat,
-    echopod: Arc<echopod>,
+    echopod: Arc<Echopod>,
 ) -> impl Filter<Extract = (echopod::Result<echopodAuthed<true>>,), Error = warp::Rejection> + Clone
 {
     warp::path::param::<String>()
@@ -387,7 +387,7 @@ fn login_authorize(
 
 fn authorize(
     username_fmt: UsernameFormat,
-    echopod: Arc<echopod>,
+    echopod: Arc<Echopod>,
 ) -> impl Filter<Extract = (echopodAuthed<true>,), Error = warp::Rejection> + Clone {
     cookie_authorize(username_fmt, echopod.clone())
         .or(login_authorize(username_fmt, echopod.clone()))
