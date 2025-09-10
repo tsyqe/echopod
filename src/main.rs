@@ -88,9 +88,9 @@ fn routes(
             .and(warp::header::optional("authorization"))
             .and(warp::cookie::optional(COOKIE_NAME))
             .then({
-                let echopod = Arc::clone(&echopod);
+                let echopod: Arc<Echopod> = Arc::clone(&echopod);
                 move |username: String, auth: Option<BasicAuth>, session_id: Option<SessionId>| {
-                    let echopod = Arc::clone(&echopod);
+                    let echopod: Arc<Echopod> = Arc::clone(&echopod);
 
                     result_to_headers(async move {
                         let auth = match auth {
@@ -341,7 +341,7 @@ fn cookie_authorize(
         .and(warp::cookie(COOKIE_NAME))
         .then({
             move |username: String, session_id: SessionId| {
-                let echopod = Arc::clone(&echopod);
+                let echopod: Arc<Echopod> = Arc::clone(&echopod);
 
                 async move {
                     echopod
@@ -372,7 +372,7 @@ fn login_authorize(
         .then(
             move |username: String, auth: BasicAuth, session_id: Option<SessionId>| {
                 info!("login auth");
-                let echopod = Arc::clone(&echopod);
+                let echopod: Arc<Echopod> = Arc::clone(&echopod);
                 async move {
                     let username = username_fmt.convert(&username)?;
                     let auth = auth.with_path_username(&username).map_err(|e| {
