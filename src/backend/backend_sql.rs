@@ -8,7 +8,7 @@ use log::{error, info};
 use crate::backend::FindError;
 use crate::device::{DeviceAndSub, DeviceUpdate};
 use crate::episode::{Episode, EpisodeRaw};
-use crate::echopod::{QueryEpisodes, Url};
+use crate::Echopod::{QueryEpisodes, Url};
 use crate::subscription::SubscriptionChangesFromClient;
 use crate::user::User;
 use crate::Timestamp;

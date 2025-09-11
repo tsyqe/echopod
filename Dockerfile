@@ -17,22 +17,22 @@ FROM debian:bullseye-slim
 WORKDIR /app
 
 # Copy the compiled binary from the builder
-COPY --from=builder /app/target/release/echopod /usr/local/bin/echopod
+COPY --from=builder /app/target/release/Echopod /usr/local/bin/Echopod
 
 # Expose the port the app runs on
 EXPOSE 8040
 
 # Set environment variables
 ENV RUST_LOG=info \
-    ECHOPOD_PORT=8040 \
-    ECHOPOD_DATA=/app/data \
-    ECHOPOD_DOWNLOADS=/app/downloads
+    Echopod_PORT=8040 \
+    Echopod_DATA=/app/data \
+    Echopod_DOWNLOADS=/app/downloads
 
 # Create directories for persistent data
 RUN mkdir -p /app/data /app/downloads
 
 # Set the entrypoint
-ENTRYPOINT ["/usr/local/bin/echopod"]
+ENTRYPOINT ["/usr/local/bin/Echopod"]
 
 # Default command
 CMD ["--help"]

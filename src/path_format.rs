@@ -1,4 +1,4 @@
-use crate::echopod::{Error, Result};
+use crate::Echopod::{Error, Result};
 use log::error;
 
 pub fn split_format_json(s: &str) -> Result<&str> {

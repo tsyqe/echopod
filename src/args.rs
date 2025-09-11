@@ -7,13 +7,13 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// Whether echopod's clients connect to it over https.
+    /// Whether Echopod's clients connect to it over https.
     /// If so, the sessionid cookie is sent as a secure cookie.
     #[arg(short, long)]
     secure: bool,
 
-    /// The address echopod should listen on. By default
-    /// echopod will listen just on the IPv4 loopback.
+    /// The address Echopod should listen on. By default
+    /// Echopod will listen just on the IPv4 loopback.
     #[arg(short, long)]
     address: Option<String>,
 
@@ -22,11 +22,11 @@ pub struct Args {
     #[arg(short, long)]
     data_dir: Option<PathBuf>,
 
-    /// The port echopod listens on.
+    /// The port Echopod listens on.
     #[arg(short, long, default_value_t = 80)]
     port: u16,
 
-    /// Emit the echopod version
+    /// Emit the Echopod version
     #[arg(short, long)]
     version: bool,
 }

@@ -11,10 +11,9 @@ use crate::episode::{Episode, Episodes, Time};
 use crate::subscription::{SubscriptionChangesFromClient, SubscriptionChangesToClient};
 use crate::time::Timestamp;
 
-pub struct echopod(Backend);
-
-pub struct echopodAuthed<const USER_MATCH: bool = false> {
-    sync: Arc<echopod>,
+pub struct Echopod(Backend);
+pub struct EchopodAuthed<const USER_MATCH: bool = false> {
+    sync: Arc<Echopod>,
     session_id: SessionId,
     username: String,
 }
@@ -57,7 +56,7 @@ impl Into<http::StatusCode> for Error {
 
 impl warp::reject::Reject for Error {}
 
-impl echopod {
+impl Echopod {
     pub fn new(backend: Backend) -> Self {
         Self(backend)
     }
@@ -66,7 +65,7 @@ impl echopod {
         self: &Arc<Self>,
         auth_attempt: AuthAttempt,
         client_session_id: Option<SessionId>,
-    ) -> Result<echopodAuthed<true>> {
+    ) -> Result<EchopodAuthed<true>> {
         let username = auth_attempt.user();
 
         let user = self.0.find_user(username).await.map_err(|e| {
@@ -85,7 +84,7 @@ impl echopod {
         }
 
         let ok = |session_id| {
-            Ok(echopodAuthed {
+            Ok(EchopodAuthed {
                 sync: Arc::clone(self),
                 session_id,
                 username: auth_attempt.user().to_string(),
@@ -139,7 +138,7 @@ impl echopod {
         }
     }
 
-    pub async fn authenticate(self: &Arc<Self>, session_id: SessionId) -> Result<echopodAuthed> {
+    pub async fn authenticate(self: &Arc<Self>, session_id: SessionId) -> Result<EchopodAuthed> {
         let session_str = session_id.to_string();
 
         let users = self
@@ -157,7 +156,7 @@ impl echopod {
                 assert_eq!(user.session_id, Some(session_str));
 
                 debug!("found user by session");
-                Ok(echopodAuthed {
+                Ok(EchopodAuthed {
                     sync: Arc::clone(self),
                     session_id,
                     username: user.username.clone(),
@@ -171,10 +170,10 @@ impl echopod {
     }
 }
 
-impl echopodAuthed {
-    pub fn with_user(self, username: &str) -> Result<echopodAuthed<true>> {
+impl EchopodAuthed {
+    pub fn with_user(self, username: &str) -> Result<EchopodAuthed<true>> {
         if username == self.username {
-            Ok(echopodAuthed {
+            Ok(EchopodAuthed {
                 sync: self.sync,
                 session_id: self.session_id,
                 username: self.username,
@@ -190,7 +189,7 @@ impl echopodAuthed {
     }
 }
 
-impl echopodAuthed<true> {
+impl EchopodAuthed<true> {
     pub fn username(&self) -> &str {
         &self.username
     }
@@ -445,11 +444,11 @@ mod test {
             .into()
     }
 
-    async fn create_echopod(username: &str) -> echopodAuthed<true> {
+    async fn create_Echopod(username: &str) -> EchopodAuthed<true> {
         let db = backend::test::create_db().await;
-        let echopod = Arc::new(echopod(backend::Backend(db)));
-        echopodAuthed {
-            sync: echopod,
+        let Echopod = Arc::new(Echopod(backend::Backend(db)));
+        EchopodAuthed {
+            sync: Echopod,
             session_id: create_session(),
             username: username.into(),
         }
@@ -462,7 +461,7 @@ mod test {
         let episode = "ep1";
         let device = "dev1";
 
-        let echopod = create_echopod(username).await;
+        let Echopod = create_Echopod(username).await;
 
         // given an "old" episode:
         query!(
@@ -500,7 +499,7 @@ mod test {
             podcast,
             episode,
         )
-        .execute(&echopod.sync.0 .0)
+        .execute(&Echopod.sync.0 .0)
         .await
         .unwrap();
 
@@ -513,11 +512,11 @@ mod test {
             guid: None,
             action: EpisodeAction::New,
         };
-        echopod.update_episodes(vec![change.clone()]).await.unwrap();
+        Echopod.update_episodes(vec![change.clone()]).await.unwrap();
 
         // then we expect an update to specific fields:
         {
-            let Episodes { actions: eps, .. } = echopod
+            let Episodes { actions: eps, .. } = Echopod
                 .episodes(QueryEpisodes {
                     since: None,
                     aggregated: None,
@@ -558,7 +557,7 @@ mod test {
                 "#,
                 username
             )
-            .fetch_all(&echopod.sync.0 .0)
+            .fetch_all(&Echopod.sync.0 .0)
             .await
             .unwrap()
         };
@@ -588,11 +587,11 @@ mod test {
                 "UPDATE episodes SET modified = 23 WHERE username = ?",
                 username
             )
-            .execute(&echopod.sync.0 .0)
+            .execute(&Echopod.sync.0 .0)
             .await
             .unwrap();
 
-            echopod.update_episodes(vec![change.clone()]).await.unwrap();
+            Echopod.update_episodes(vec![change.clone()]).await.unwrap();
 
             let episodes = query_episodes().await;
             let [SmallEp {
@@ -617,7 +616,7 @@ mod test {
                 WHERE username = "u2"
                 "#
             )
-            .fetch_all(&echopod.sync.0 .0)
+            .fetch_all(&Echopod.sync.0 .0)
             .await
             .unwrap();
 

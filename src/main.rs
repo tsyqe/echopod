@@ -6,30 +6,22 @@ use ::time::ext::NumericalDuration;
 use cookie::{Cookie, SameSite};
 use serde::{Deserialize, Serialize};
 use warp::{
-    http::{
-        self,
-        header::{HeaderMap, HeaderValue},
-    },
+    http::{self, header::{HeaderMap, HeaderValue}},
     hyper::Body,
     Filter, Rejection, Reply,
 };
 use log::{debug, error, info};
 
-use crate::echopod::Echopod;
-
 mod auth;
 use auth::{BasicAuth, SessionId};
 
 mod user;
-
 mod device;
-
 mod subscription;
-
 mod episode;
 
-mod echopod;
-use echopod::{echopod, echopodAuthed};
+mod echopod;                       // lowercase module
+use crate::echopod::{Echopod, EchopodAuthed}; // structs
 
 mod time;
 use crate::time::Timestamp;
@@ -57,7 +49,7 @@ async fn main() {
     let args = <Args as clap::Parser>::parse();
 
     if args.show_version() {
-        println!("echopod {}", env!("CARGO_PKG_VERSION"));
+        println!("Echopod {}", env!("CARGO_PKG_VERSION"));
         return;
     }
     let data_dir = args.data_dir().unwrap_or_else(|| Path::new("."));
@@ -65,9 +57,9 @@ async fn main() {
     let backend = Backend::new(&data_dir).await;
 
     let secure = args.secure();
-    let echopod = Arc::new(echopod::new(backend));
+    let Echopod = Arc::new(Echopod::new(backend));
 
-    let routes = routes(echopod, secure);
+    let routes = routes(Echopod, secure);
 
     warp::serve(routes)
         .run(args.addr().expect("couldn't parse address"))
@@ -75,12 +67,12 @@ async fn main() {
 }
 
 fn routes(
-    echopod: Arc<Echopod>,
+    Echopod: Arc<Echopod>,
     secure: bool,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone + Sync + Send {
     let hello = warp::path::end()
         .and(warp::get())
-        .map(|| "echopod is Working!");
+        .map(|| "Echopod is Working!");
 
     let auth = {
         let login = warp::post()
@@ -88,24 +80,24 @@ fn routes(
             .and(warp::header::optional("authorization"))
             .and(warp::cookie::optional(COOKIE_NAME))
             .then({
-                let echopod: Arc<Echopod> = Arc::clone(&echopod);
+                let Echopod: Arc<Echopod> = Arc::clone(&Echopod);
                 move |username: String, auth: Option<BasicAuth>, session_id: Option<SessionId>| {
-                    let echopod: Arc<Echopod> = Arc::clone(&echopod);
+                    let Echopod: Arc<Echopod> = Arc::clone(&Echopod);
 
                     result_to_headers(async move {
                         let auth = match auth {
                             Some(auth) => auth.with_path_username(&username).map_err(|e| {
                                 error!("{e}");
-                                echopod::Error::Unauthorized
+                                Echopod::Error::Unauthorized
                             }),
                             None => {
                                 error!("couldn't auth \"{username}\" - no auth header/cookie");
-                                Err(echopod::Error::Unauthorized)
+                                Err(Echopod::Error::Unauthorized)
                             }
                         }?;
 
-                        let echopod = echopod.login(auth, session_id).await?;
-                        let session_id = echopod.session_id();
+                        let Echopod = Echopod.login(auth, session_id).await?;
+                        let session_id = Echopod.session_id();
 
                         let cookie = Cookie::build((COOKIE_NAME, session_id.to_string()))
                             .secure(secure)
@@ -115,7 +107,7 @@ fn routes(
                             .path("/api");
 
                         let cookie = HeaderValue::from_str(&cookie.to_string())
-                            .map_err(|_| echopod::Error::Internal)?;
+                            .map_err(|_| Echopod::Error::Internal)?;
                         let mut headers = HeaderMap::new();
                         headers.insert("set-cookie", cookie);
                         Ok(headers)
@@ -127,10 +119,10 @@ fn routes(
             .and(warp::path!(
                 "api" / "2" / "auth" / .. /* String / "logout.json" */
             ))
-            .and(authorize(UsernameFormat::Name, echopod.clone()))
+            .and(authorize(UsernameFormat::Name, Echopod.clone()))
             .and(warp::path::path("logout.json").and(warp::path::end()))
-            .then(move |echopod: echopodAuthed<true>| {
-                result_to_ok(async move { echopod.logout().await })
+            .then(move |Echopod: EchopodAuthed<true>| {
+                result_to_ok(async move { Echopod.logout().await })
             });
 
         login.or(logout)
@@ -139,11 +131,11 @@ fn routes(
     let devices = {
         let for_user = warp::path!("api" / "2" / "devices" / .. /* String */)
             .and(warp::get())
-            .and(authorize(UsernameFormat::NameJson, echopod.clone()))
+            .and(authorize(UsernameFormat::NameJson, Echopod.clone()))
             .and(warp::path::end())
-            .then(|echopod: echopodAuthed<true>| {
+            .then(|Echopod: EchopodAuthed<true>| {
                 result_to_json(async move {
-                    let devs = echopod.devices().await?;
+                    let devs = Echopod.devices().await?;
 
                     Ok(devs)
                 })
@@ -151,14 +143,14 @@ fn routes(
 
         let update = warp::path!("api" / "2" / "devices" / .. /* String / String */)
             .and(warp::post())
-            .and(authorize(UsernameFormat::Name, echopod.clone()))
+            .and(authorize(UsernameFormat::Name, Echopod.clone()))
             .and(warp::path::param::<String>().and(warp::path::end()))
             .and(warp::body::json())
             .then(
-                move |echopod: echopodAuthed<true>, deviceid_format: String, device| {
+                move |Echopod: EchopodAuthed<true>, deviceid_format: String, device| {
                     result_to_ok(async move {
                         let device_id = split_format_json(&deviceid_format)?;
-                        echopod.update_device(device_id, device).await
+                        Echopod.update_device(device_id, device).await
                     })
                 },
             );
@@ -169,29 +161,29 @@ fn routes(
     let subscriptions = {
         let get = warp::path!("api" / "2" / "subscriptions" / .. /* String / String*/)
             .and(warp::get())
-            .and(authorize(UsernameFormat::Name, echopod.clone()))
+            .and(authorize(UsernameFormat::Name, Echopod.clone()))
             .and(warp::path::param::<String>().and(warp::path::end()))
             .and(warp::query())
             .then(
-                move |echopod: echopodAuthed<true>, deviceid_format: String, query: QuerySince| {
+                move |Echopod: EchopodAuthed<true>, deviceid_format: String, query: QuerySince| {
                     result_to_json(async move {
                         let device_id = split_format_json(&deviceid_format)?;
-                        echopod.subscriptions(device_id, query.since).await
+                        Echopod.subscriptions(device_id, query.since).await
                     })
                 },
             );
 
         let upload = warp::path!("api" / "2" / "subscriptions" / .. /* String / String */)
             .and(warp::post())
-            .and(authorize(UsernameFormat::Name, echopod.clone()))
+            .and(authorize(UsernameFormat::Name, Echopod.clone()))
             .and(warp::path::param::<String>().and(warp::path::end()))
             .and(warp::body::json())
             .then(
-                move |echopod: echopodAuthed<true>, deviceid_format: String, changes| {
+                move |Echopod: EchopodAuthed<true>, deviceid_format: String, changes| {
                     result_to_json(async move {
                         let device_id = split_format_json(&deviceid_format)?;
 
-                        echopod.update_subscriptions(device_id, changes).await
+                        Echopod.update_subscriptions(device_id, changes).await
                     })
                 },
             );
@@ -202,22 +194,22 @@ fn routes(
     let episodes = {
         let get = warp::path!("api" / "2" / "episodes" / .. /* String */)
             .and(warp::get())
-            .and(authorize(UsernameFormat::NameJson, echopod.clone()))
+            .and(authorize(UsernameFormat::NameJson, Echopod.clone()))
             .and(warp::path::end())
             .and(warp::query())
             .then(
-                move |echopod: echopodAuthed<true>, query: echopod::QueryEpisodes| {
-                    result_to_json(async move { echopod.episodes(query).await })
+                move |Echopod: EchopodAuthed<true>, query: Echopod::QueryEpisodes| {
+                    result_to_json(async move { Echopod.episodes(query).await })
                 },
             );
 
         let upload = warp::path!("api" / "2" / "episodes" / .. /* String */)
             .and(warp::post())
-            .and(authorize(UsernameFormat::NameJson, echopod.clone()))
+            .and(authorize(UsernameFormat::NameJson, Echopod.clone()))
             .and(warp::path::end())
             .and(warp::body::json())
-            .then(move |echopod: echopodAuthed<true>, body| {
-                result_to_json(async move { echopod.update_episodes(body).await })
+            .then(move |Echopod: EchopodAuthed<true>, body| {
+                result_to_json(async move { Echopod.update_episodes(body).await })
             });
 
         get.or(upload)
@@ -245,7 +237,7 @@ fn routes(
             let now = Timestamp::now();
 
             info!(
-                target: "echopod::warp",
+                target: "Echopod::warp",
                 "{} {} \"{} {} {:?}\" {} \"{}\" \"{}\" {:?}",
                 OptFmt(info.remote_addr()),
                 match now {
@@ -269,7 +261,7 @@ fn routes(
 
 async fn result_to_json<F, B>(f: F) -> impl warp::Reply
 where
-    F: Future<Output = echopod::Result<B>>,
+    F: Future<Output = Echopod::Result<B>>,
     B: Serialize,
 {
     match f.await {
@@ -280,7 +272,7 @@ where
 
 async fn result_to_ok<F>(f: F) -> impl warp::Reply
 where
-    F: Future<Output = echopod::Result<()>>,
+    F: Future<Output = Echopod::Result<()>>,
 {
     match f.await {
         Ok(()) => warp::reply().into_response(),
@@ -290,7 +282,7 @@ where
 
 async fn result_to_headers<F>(f: F) -> impl warp::Reply
 where
-    F: Future<Output = echopod::Result<HeaderMap>>,
+    F: Future<Output = Echopod::Result<HeaderMap>>,
 {
     match f.await {
         Ok(header_map) => {
@@ -313,7 +305,7 @@ where
     }
 }
 
-fn err_to_warp(e: echopod::Error) -> impl warp::Reply {
+fn err_to_warp(e: Echopod::Error) -> impl warp::Reply {
     warp::reply::with_status(warp::reply(), e.into())
 }
 
@@ -324,7 +316,7 @@ enum UsernameFormat {
 }
 
 impl UsernameFormat {
-    pub fn convert<'a>(&self, username: &'a str) -> echopod::Result<&'a str> {
+    pub fn convert<'a>(&self, username: &'a str) -> Echopod::Result<&'a str> {
         match self {
             Self::Name => Ok(username),
             Self::NameJson => split_format_json(username),
@@ -334,17 +326,17 @@ impl UsernameFormat {
 
 fn cookie_authorize(
     username_fmt: UsernameFormat,
-    echopod: Arc<Echopod>,
-) -> impl Filter<Extract = (echopod::Result<echopodAuthed<true>>,), Error = warp::Rejection> + Clone
+    Echopod: Arc<Echopod>,
+) -> impl Filter<Extract = (Echopod::Result<EchopodAuthed<true>>,), Error = warp::Rejection> + Clone
 {
     warp::path::param::<String>()
         .and(warp::cookie(COOKIE_NAME))
         .then({
             move |username: String, session_id: SessionId| {
-                let echopod: Arc<Echopod> = Arc::clone(&echopod);
+                let Echopod: Arc<Echopod> = Arc::clone(&Echopod);
 
                 async move {
-                    echopod
+                    Echopod
                         .authenticate(session_id)
                         .await?
                         .with_user(username_fmt.convert(&username)?)
@@ -363,8 +355,8 @@ fn cookie_authorize(
 
 fn login_authorize(
     username_fmt: UsernameFormat,
-    echopod: Arc<Echopod>,
-) -> impl Filter<Extract = (echopod::Result<echopodAuthed<true>>,), Error = warp::Rejection> + Clone
+    Echopod: Arc<Echopod>,
+) -> impl Filter<Extract = (Echopod::Result<EchopodAuthed<true>>,), Error = warp::Rejection> + Clone
 {
     warp::path::param::<String>()
         .and(warp::header("authorization"))
@@ -372,14 +364,14 @@ fn login_authorize(
         .then(
             move |username: String, auth: BasicAuth, session_id: Option<SessionId>| {
                 info!("login auth");
-                let echopod: Arc<Echopod> = Arc::clone(&echopod);
+                let Echopod: Arc<Echopod> = Arc::clone(&Echopod);
                 async move {
                     let username = username_fmt.convert(&username)?;
                     let auth = auth.with_path_username(&username).map_err(|e| {
                         error!("{e}");
-                        echopod::Error::Unauthorized
+                        Echopod::Error::Unauthorized
                     })?;
-                    echopod.login(auth, session_id).await
+                    Echopod.login(auth, session_id).await
                 }
             },
         )
@@ -387,16 +379,16 @@ fn login_authorize(
 
 fn authorize(
     username_fmt: UsernameFormat,
-    echopod: Arc<Echopod>,
-) -> impl Filter<Extract = (echopodAuthed<true>,), Error = warp::Rejection> + Clone {
-    cookie_authorize(username_fmt, echopod.clone())
-        .or(login_authorize(username_fmt, echopod.clone()))
+    Echopod: Arc<Echopod>,
+) -> impl Filter<Extract = (EchopodAuthed<true>,), Error = warp::Rejection> + Clone {
+    cookie_authorize(username_fmt, Echopod.clone())
+        .or(login_authorize(username_fmt, Echopod.clone()))
         .unify()
-        .and_then(|auth: echopod::Result<_>| async move { auth.map_err(warp::reject::custom) })
+        .and_then(|auth: Echopod::Result<_>| async move { auth.map_err(warp::reject::custom) })
 }
 
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(err) = err.find::<echopod::Error>() {
+    if let Some(err) = err.find::<Echopod::Error>() {
         Ok(err_to_warp(*err))
     } else {
         Err(err)
@@ -414,8 +406,8 @@ mod test {
     #[tokio::test]
     async fn hello() {
         let db = backend::test::create_db().await;
-        let echopod = Arc::new(echopod::new(backend::Backend(db)));
-        let filter = routes(echopod, true);
+        let Echopod = Arc::new(Echopod::new(backend::Backend(db)));
+        let filter = routes(Echopod, true);
 
         let res = warp::test::request().path("/").reply(&filter).await;
 
@@ -440,8 +432,8 @@ mod test {
         .await
         .unwrap();
 
-        let echopod = Arc::new(echopod::new(backend::Backend(db)));
-        let filter = routes(echopod, true);
+        let Echopod = Arc::new(Echopod::new(backend::Backend(db)));
+        let filter = routes(Echopod, true);
         let bob_auth = format!("Basic {}", base64(&format!("{}:{}", "bob", pass)));
 
         // logging in succeeds

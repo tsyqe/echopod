@@ -1,12 +1,12 @@
 [package]
-name = "echopod"
+name = "Echopod"
 version = "0.1.0"
 edition = "2021"
 
 description = "A server to sync podcasts with, utilizing the gpodder API."
 license = "MIT License"
-homepage = "https://github.com/tsyqe/echopod"
-repository = "https://github.com/tsyqe/echopod"
+homepage = "https://github.com/tsyqe/Echopod"
+repository = "https://github.com/tsyqe/Echopod"
 
 [dependencies]
 

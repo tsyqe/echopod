@@ -1,9 +1,9 @@
 version: '3.9'
 
 services:
-  echopod-db:
+  Echopod-db:
     image: postgres:17-alpine
-    container_name: echopod-db
+    container_name: Echopod-db
     env_file:
       - .env
     environment:
@@ -14,11 +14,11 @@ services:
       - ./db:/var/lib/postgresql/data
     restart: unless-stopped
 
-  echopod:
+  Echopod:
     build: .
-    container_name: echopod
+    container_name: Echopod
     ports:
-      - "8765:${ECHOPOD_PORT}"
+      - "8765:${Echopod_PORT}"
     env_file:
       - .env
     environment:
@@ -28,9 +28,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
     volumes:
-      - ./data:/opt/echopod/data
-      - ./downloads:/opt/echopod/downloads
-      - ./backups:/opt/echopod/backups
+      - ./data:/opt/Echopod/data
+      - ./downloads:/opt/Echopod/downloads
+      - ./backups:/opt/Echopod/backups
     depends_on:
-      - echopod-db
+      - Echopod-db
     restart: unless-stopped

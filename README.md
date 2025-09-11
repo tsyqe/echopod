@@ -1,4 +1,4 @@
-# echopod
+# Echopod
 
 A HTTP server for syncing podcast app state, mirroring the [gpodder API]. Compatible with [AntennaPod]'s [sync service].
 
@@ -21,7 +21,7 @@ This will add a user into the database, assumed to be `pod.sql`.
 
 # Endpoints
 
-echopod doesn't cover the [full gpodder API]:
+Echopod doesn't cover the [full gpodder API]:
 
 - auth:
 	- `POST api/2/auth/{username}/login.json`
@@ -40,15 +40,15 @@ echopod doesn't cover the [full gpodder API]:
 
 # Logging
 
-echopod uses the `RUST_LOG` environment variable for logging. To generate logs similar to a webserver:
+Echopod uses the `RUST_LOG` environment variable for logging. To generate logs similar to a webserver:
 ```sh
-export RUST_LOG=echopod=info
+export RUST_LOG=Echopod=info
 
 # or for debugging:
-export RUST_LOG=echopod=trace
+export RUST_LOG=Echopod=trace
 
 # for warp/endpoint output:
-export RUST_LOG=echopod=info,warp=info
+export RUST_LOG=Echopod=info,warp=info
 ```
 
 See the [log crate] for more details
@@ -59,13 +59,13 @@ See the [log crate] for more details
 
 ## Modes
 
-echopod has two backends: SQL database or plain text files. The former being more scalable, the latter being easier to inspect and manipulate with Unix tools.
+Echopod has two backends: SQL database or plain text files. The former being more scalable, the latter being easier to inspect and manipulate with Unix tools.
 
 By default it builds in file mode, to build in sql mode, build with `cargo build --features backend-sql`.
 
 ## SQLx offline build
 
-echopod uses sqlx in [offline mode] for builds (see [`build.rs`](./build.rs) for more).
+Echopod uses sqlx in [offline mode] for builds (see [`build.rs`](./build.rs) for more).
 
 To update the schema:
 ```sh
